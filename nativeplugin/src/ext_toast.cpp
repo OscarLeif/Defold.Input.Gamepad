@@ -77,6 +77,9 @@ static int ToastMessage(lua_State* L)
     JNIEnv* env = attachscope.m_Env;
 
     const char* message = luaL_checkstring(L, 1);
+    int duration = luaL_optinteger(L, 2, 0);  // Default duration to 0 if not provided
+    // Ensure duration is between 0 and 1
+    duration = (duration > 1) ? 1 : ((duration < 0) ? 0 : duration);
 
     // Get the class
     jclass cls = GetClass(env, "com.defold.toastextension.MyToast");
@@ -87,7 +90,7 @@ static int ToastMessage(lua_State* L)
     logMessage("TAG_PLUGIN", "Class Loaded");
     
     // Get the method ID
-    jmethodID showToastMethod = env->GetStaticMethodID(cls, "showToast", "(Landroid/content/Context;Ljava/lang/String;)V");
+    jmethodID showToastMethod = env->GetStaticMethodID(cls, "showToast", "(Landroid/content/Context;Ljava/lang/String;I)V");
     if (showToastMethod == nullptr) {
         return luaL_error(L, "Method not found");        
     }
@@ -99,7 +102,7 @@ static int ToastMessage(lua_State* L)
     logMessage("TAG_PLUGIN", "Context Loaded");
 
     // Call the static method
-    env->CallStaticVoidMethod(cls, showToastMethod, context, env->NewStringUTF(message));    
+    env->CallStaticVoidMethod(cls, showToastMethod, context, env->NewStringUTF(message), duration);    
     return 1;
 }
 
