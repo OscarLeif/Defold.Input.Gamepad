@@ -1,6 +1,6 @@
 // Extension lib defines
-#define EXTENSION_NAME androidnative
-#define LIB_NAME "androidnative"
+#define EXTENSION_NAME androidInput
+#define LIB_NAME "androidInput"
 #define MODULE_NAME LIB_NAME
 
 
@@ -10,7 +10,12 @@
 
 #if defined(DM_PLATFORM_ANDROID)
 
+#include <android/log.h>
+
 //#include "testlib.h" // Multiply
+static JNIEnv* g_env;
+static jobject g_obj;
+
 
 static JNIEnv* Attach()
 {
@@ -62,10 +67,47 @@ static int DoStuffJava(lua_State* L)
     return 1;
 }
 
+void logMessage(const char* tag, const char* message) {
+    __android_log_print(ANDROID_LOG_INFO, tag, "%s", message);
+}
+
+static int ToastMessage(lua_State* L)
+{    
+    AttachScope attachscope;
+    JNIEnv* env = attachscope.m_Env;
+
+    const char* message = luaL_checkstring(L, 1);
+
+    // Get the class
+    jclass cls = GetClass(env, "com.defold.toastextension.MyToast");
+    if (cls == nullptr) {
+        return luaL_error(L, "Class not found");
+        //return 1;
+    }
+    logMessage("TAG_PLUGIN", "Class Loaded");
+    
+    // Get the method ID
+    jmethodID showToastMethod = env->GetStaticMethodID(cls, "showToast", "(Landroid/content/Context;Ljava/lang/String;)V");
+    if (showToastMethod == nullptr) {
+        return luaL_error(L, "Method not found");        
+    }
+    logMessage("TAG_PLUGIN", "Method Loaded");
+    
+    // Get the context
+    jobject context = dmGraphics::GetNativeAndroidActivity();
+
+    logMessage("TAG_PLUGIN", "Context Loaded");
+
+    // Call the static method
+    env->CallStaticVoidMethod(cls, showToastMethod, context, env->NewStringUTF(message));    
+    return 1;
+}
+
 // Functions exposed to Lua
 static const luaL_reg Module_methods[] =
 {
     {"dostuff_java", DoStuffJava},
+    {"toast", ToastMessage},
     //{"dostuff_jar", DoStuffJar},
     //{"vibrate", Vibrate},
     //{"getraw", GetRaw},
