@@ -10,6 +10,7 @@ height = 640
 
 [android]
 input_method = HiddenInputField
+package = ata.defold.gamepad
 
 [project]
 title = Defold.Gamepad

@@ -16,6 +16,9 @@
 static JNIEnv* g_env;
 static jobject g_obj;
 
+static jclass g_GamepadClass= 0;
+static jmethodID g_GetGamepadMethodId = 0;
+static jobject		g_GamepadObject = 0;
 
 static JNIEnv* Attach()
 {
@@ -34,7 +37,8 @@ static bool Detach(JNIEnv* env)
     return !exception;
 }
 
-namespace {
+namespace 
+{
     struct AttachScope
     {
         JNIEnv* m_Env;
@@ -62,12 +66,49 @@ static jclass GetClass(JNIEnv* env, const char* classname)
     return outcls;
 }
 
+static int InitializeAndroidGamepad(lua_State* L)
+{
+    dmLogInfo("Trying to initialize defold Android Gamepad");
+    AttachScope attachscope;
+    JNIEnv* env = attachscope.m_Env;
+    //get the Gamepad Input Class
+    jclass tmp = GetClass(env, "com.defold.android.gamepad/AndroidGamepad");
+    g_GamepadClass = (jclass)env-> NewGlobalRef(tmp);
+    if(!g_GamepadClass)
+    {
+        dmLogError("Could not find class 'com.defold.android.gamepad/AndroidGamepad'");
+        return false;
+    }
+    dmLogInfo("Class Android Gamepad loaded");
+
+    g_GetGamepadMethodId = env->GetStaticMethodID(g_GamepadClass, "getGamepad", "(Landroid/content/Context;)Lcom/defold/android/gamepad/AndroidGamepad;");
+    if(!g_GetGamepadMethodId)
+    {
+        dmLogError("Could not get static method 'getGamepad'.");
+        return false;
+    }
+    dmLogInfo("Get Gamepad method is also loaded");
+
+    jobject tmp1 = env->CallStaticObjectMethod(g_GamepadClass, g_GetGamepadMethodId, dmGraphics::GetNativeAndroidActivity());
+    g_GamepadObject = (jobject) env -> NewGlobalRef(tmp1);
+    if(!g_GamepadObject)    
+    {
+        dmLogError("Could not create instance.");
+        return false;
+    }
+
+    
+    
+    return 1;
+}
+
 static int DoStuffJava(lua_State* L)
 {
     return 1;
 }
 
-void logMessage(const char* tag, const char* message) {
+void logMessage(const char* tag, const char* message) 
+{
     __android_log_print(ANDROID_LOG_INFO, tag, "%s", message);
 }
 
@@ -111,6 +152,7 @@ static const luaL_reg Module_methods[] =
 {
     {"dostuff_java", DoStuffJava},
     {"toast", ToastMessage},
+    {"initGamepad", InitializeAndroidGamepad },
     //{"dostuff_jar", DoStuffJar},
     //{"vibrate", Vibrate},
     //{"getraw", GetRaw},
@@ -130,7 +172,7 @@ static void LuaInit(lua_State* L)
 }
 
 static dmExtension::Result AppInitializeExtension(dmExtension::AppParams* params)
-{
+{    
     return dmExtension::RESULT_OK;
 }
 
@@ -138,12 +180,13 @@ static dmExtension::Result InitializeExtension(dmExtension::Params* params)
 {
     // Init Lua
     LuaInit(params->m_L);
-    printf("Registered %s Extension\n", MODULE_NAME);
+    printf("Registered %s Extension\n", MODULE_NAME);    
     return dmExtension::RESULT_OK;
 }
 
 static dmExtension::Result AppFinalizeExtension(dmExtension::AppParams* params)
 {
+    logMessage("TAG_PLUGIN", "Gamepad Plugin Here");    
     return dmExtension::RESULT_OK;
 }
 
@@ -152,8 +195,7 @@ static dmExtension::Result FinalizeExtension(dmExtension::Params* params)
     return dmExtension::RESULT_OK;
 }
 
-#else
-
+#else //Not supported Platforms
 static dmExtension::Result AppInitializeExtension(dmExtension::AppParams* params)
 {
     dmLogWarning("Registered %s (null) Extension\n", MODULE_NAME);
@@ -161,7 +203,7 @@ static dmExtension::Result AppInitializeExtension(dmExtension::AppParams* params
 }
 
 static dmExtension::Result InitializeExtension(dmExtension::Params* params)
-{
+{    
     return dmExtension::RESULT_OK;
 }
 

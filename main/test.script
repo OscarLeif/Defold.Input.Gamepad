@@ -3,6 +3,8 @@ function init(self)
 	-- Learn more: https://defold.com/manuals/script/
 	-- Remove this function if not needed
 	msg.post(".", "acquire_input_focus")
+	print("We should Initialize the test Script here")
+	androidInput.initGamepad()
 end
 
 function final(self)
